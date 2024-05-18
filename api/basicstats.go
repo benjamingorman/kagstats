@@ -43,6 +43,7 @@ func BasicStatsRoutes(r *mux.Router) {
 	r.HandleFunc("/leaderboard/archer", GetArcherLeaderBoard).Methods("GET")
 	r.HandleFunc("/leaderboard/builder", GetBuilderLeaderBoard).Methods("GET")
 	r.HandleFunc("/leaderboard/knight", GetKnightLeaderBoard).Methods("GET")
+	r.HandleFunc("/leaderboard/flag_captures", GetFlagCapturesLeaderBoard).Methods("GET")
 	r.HandleFunc("/status", GetStatus).Methods("GET")
 }
 
@@ -208,6 +209,28 @@ func GetBuilderLeaderBoard(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} LeaderboardList
 // @Router /leaderboard/knight [get]
 func GetKnightLeaderBoard(w http.ResponseWriter, r *http.Request) {
+	var stats []BasicStats
+
+	err := db.Select(&stats, basicQuery+`WHERE NOT p.leaderboardBan AND NOT p.statsBan AND basic_stats.knight_kills >= ? AND basic_stats.knight_deaths >= ? 
+		ORDER BY (basic_stats.knight_kills / basic_stats.knight_deaths) DESC LIMIT 20`, config.API.KnightGate, config.API.KnightGate)
+	if err != nil {
+		leaderboardError(w, err)
+		return
+	}
+
+	JSONResponse(w, LeaderboardList{
+		Size:        len(stats),
+		LeaderBoard: stats,
+	})
+}
+
+// GetFlagCapturesLeaderBoard godoc
+// @Tags Leaderboards
+// @Summary gets the BasicStats for the top 20 players sorted by number of flag captures
+// @Produce json
+// @Success 200 {object} LeaderboardList
+// @Router /leaderboard/flag_captures [get]
+func GetFlagCapturesLeaderBoard(w http.ResponseWriter, r *http.Request) {
 	var stats []BasicStats
 
 	err := db.Select(&stats, basicQuery+`WHERE NOT p.leaderboardBan AND NOT p.statsBan AND basic_stats.knight_kills >= ? AND basic_stats.knight_deaths >= ? 
